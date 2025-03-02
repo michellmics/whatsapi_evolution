@@ -1,17 +1,60 @@
-version: '3'
 services:
-  evolution-api:
+  api:
     container_name: evolution_api
-    image: atendai/evolution-api
+    image: atendai/evolution-api:homolog
     restart: always
+    depends_on:
+      - redis
+      - postgres
     ports:
-      - "8090:8090"
+      - 8090:8090
+    volumes:
+      - evolution_instances:/evolution/instances
+    networks:
+      - evolution-net
     env_file:
       - .env
+    expose:
+      - 8090
+
+  redis:
+    image: redis:latest
+    networks:
+      - evolution-net
+    container_name: redis
+    command: >
+      redis-server --port 6379 --appendonly yes
     volumes:
-      - evolution_store:/evolution/store
-      - evolution_instances:/evolution/instances
+      - evolution_redis:/data
+    ports:
+      - 6379:6379
+
+  postgres:
+    container_name: postgres
+    image: postgres:15
+    networks:
+      - evolution-net
+    command: ["postgres", "-c", "max_connections=1000", "-c", "listen_addresses=*"]
+    restart: always
+    ports:
+      - 5590:5590
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=0xP33nUBCRY97EswelkRyl9G49Z7NAfpJsFYoBKOO5nA1f3MQBDgHVTUZLbvASu4
+      - POSTGRES_DB=evolution
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - 5590
 
 volumes:
-  evolution_store:
   evolution_instances:
+  evolution_redis:
+  postgres_data:
+
+
+networks:
+  evolution-net:
+    name: evolution-net
+    driver: bridge
